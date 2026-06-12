@@ -144,7 +144,6 @@ export default function DashboardPage() {
       getahHasil,
       sawitPerHek: sawitLuas > 0 ? sawitHasil / sawitLuas : 0,
       getahPerHek: getahLuas > 0 ? getahHasil / getahLuas : 0,
-      peserta: sum(filtered, 'peserta'),
     }
   }, [filtered])
 
@@ -287,7 +286,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
               Hasil Sawit
@@ -310,16 +309,6 @@ export default function DashboardPage() {
             <p className="text-xs text-gray-500 mt-2">
               {nf(agg.getahPerHek, 2)} kg/hek
             </p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-              Jumlah Peserta
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {nf(agg.peserta, 0)}
-            </div>
-            <p className="text-xs text-gray-500 mt-2">{labelBulan}</p>
           </div>
         </div>
 
