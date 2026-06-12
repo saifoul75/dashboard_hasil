@@ -24,57 +24,6 @@ const NO_SELECT_STYLE = {
 const AXIS_TICK = { fontSize: 12 }
 const ALL = 'ALL'
 
-// Normalisasi nama PO: huruf besar, titik jadi jarak, buang jarak berlebihan
-function normPO(s: string): string {
-  return (s || '')
-    .toUpperCase()
-    .split('.')
-    .join(' ')
-    .split(' ')
-    .filter(Boolean)
-    .join(' ')
-}
-
-// Padanan Pusat Operasi (pol_pn) -> Negeri (kunci dalam bentuk ternormal)
-const PO_TO_NEGERI: Record<string, string> = {
-  BESUT: 'Terengganu',
-  DUNGUN: 'Terengganu',
-  'KUALA BERANG': 'Terengganu',
-  GERIK: 'Perak',
-  'KG GAJAH': 'Perak',
-  'KUALA KANGSAR': 'Perak',
-  MANJUNG: 'Perak',
-  SELAMA: 'Perak',
-  TAPAH: 'Perak',
-  KUANTAN: 'Pahang',
-  LIPIS: 'Pahang',
-  PEKAN: 'Pahang',
-  RAUB: 'Pahang',
-  ROMPIN: 'Pahang',
-  TEMERLOH: 'Pahang',
-  MACHANG: 'Kelantan',
-  KEDAH: 'Kedah',
-  JOHOR: 'Johor',
-  MELAKA: 'Melaka',
-  'N SEMBILAN': 'Negeri Sembilan',
-  SELANGOR: 'Selangor',
-}
-
-// Padanan Negeri -> Wilayah (RISDA)
-const NEGERI_TO_WILAYAH: Record<string, string> = {
-  Perak: 'Utara',
-  Kedah: 'Utara',
-  Selangor: 'Utara',
-  Terengganu: 'Timur',
-  Kelantan: 'Timur',
-  Pahang: 'Tengah',
-  'Negeri Sembilan': 'Selatan',
-  Melaka: 'Selatan',
-  Johor: 'Selatan',
-}
-
-const WILAYAH_ORDER = ['Utara', 'Timur', 'Tengah', 'Selatan']
-
 type HasilRow = {
   id: string
   kod_bulan: string
@@ -99,14 +48,6 @@ type HasilRow = {
 
 // Baris dengan hasil increment bulanan (inc) yang dikira dari nilai kumulatif
 type AugRow = HasilRow & { inc: number }
-
-function negeriOf(r: HasilRow): string {
-  return r.negeri || PO_TO_NEGERI[normPO(r.pol_pn)] || 'Lain-lain'
-}
-
-function wilayahOf(r: HasilRow): string {
-  return r.wilayah || NEGERI_TO_WILAYAH[negeriOf(r)] || 'Lain-lain'
-}
 
 function nf(n: number, d = 1) {
   return (n || 0).toLocaleString('ms-MY', { maximumFractionDigits: d })
@@ -136,10 +77,7 @@ function luasLatest(arr: AugRow[]): number {
 export default function DashboardPage() {
   const [rows, setRows] = useState<HasilRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [wilayah, setWilayah] = useState<string>(ALL)
-  const [negeri, setNegeri] = useState<string>(ALL)
   const [po, setPo] = useState<string>(ALL)
-  const [bulan, setBulan] = useState<string>(ALL)
 
   useEffect(() => {
     async function fetchData() {
@@ -210,89 +148,29 @@ export default function DashboardPage() {
     return out
   }, [rows])
 
-  // Senarai Wilayah (susunan tetap, hanya yang ada data)
-  const senaraiWilayah = useMemo(() => {
-    const set = new Set<string>()
-    rows.forEach((r) => set.add(wilayahOf(r)))
-    const ordered = WILAYAH_ORDER.filter((w) => set.has(w))
-    const extra = Array.from(set)
-      .filter((w) => !WILAYAH_ORDER.includes(w))
-      .sort((a, b) => a.localeCompare(b))
-    return [...ordered, ...extra]
-  }, [rows])
-
-  // Senarai Negeri (bergantung pada Wilayah terpilih)
-  const senaraiNegeri = useMemo(() => {
-    const set = new Set<string>()
-    rows.forEach((r) => {
-      if (wilayah === ALL || wilayahOf(r) === wilayah) set.add(negeriOf(r))
-    })
-    return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [rows, wilayah])
-
-  // Senarai Pusat Operasi (bergantung pada Wilayah + Negeri terpilih)
+  // Senarai Pusat Operasi (satu-satunya penapis)
   const senaraiPO = useMemo(() => {
     const set = new Set<string>()
     rows.forEach((r) => {
-      if (
-        (wilayah === ALL || wilayahOf(r) === wilayah) &&
-        (negeri === ALL || negeriOf(r) === negeri) &&
-        r.pol_pn
-      ) {
-        set.add(r.pol_pn)
-      }
+      if (r.pol_pn) set.add(r.pol_pn)
     })
     return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [rows, wilayah, negeri])
-
-  // Senarai bulan (unik, hanya yang ada data)
-  const senaraiBulan = useMemo(() => {
-    const map = new Map<string, string>()
-    rows.forEach((r) => {
-      if ((Number(r.hasil) || 0) > 0 && r.kod_bulan)
-        map.set(r.kod_bulan, r.nama_bulan)
-    })
-    return Array.from(map, ([kod, nama]) => ({ kod, nama })).sort((a, b) =>
-      a.kod.localeCompare(b.kod)
-    )
   }, [rows])
 
-  function pilihWilayah(v: string) {
-    setWilayah(v)
-    setNegeri(ALL)
-    setPo(ALL)
-  }
-  function pilihNegeri(v: string) {
-    setNegeri(v)
-    setPo(ALL)
-  }
-
-  // Tapisan geografi (Wilayah -> Negeri -> PO), abaikan bulan
-  const geoFiltered = useMemo(
-    () =>
-      augmented.filter(
-        (r) =>
-          (wilayah === ALL || wilayahOf(r) === wilayah) &&
-          (negeri === ALL || negeriOf(r) === negeri) &&
-          (po === ALL || r.pol_pn === po)
-      ),
-    [augmented, wilayah, negeri, po]
-  )
-
-  // Baris ditapis penuh (termasuk bulan)
+  // Tapisan ikut Pusat Operasi sahaja
   const filtered = useMemo(
-    () => geoFiltered.filter((r) => bulan === ALL || r.kod_bulan === bulan),
-    [geoFiltered, bulan]
+    () => augmented.filter((r) => po === ALL || r.pol_pn === po),
+    [augmented, po]
   )
 
-  // Tanaman yang wujud dalam skop geografi semasa
+  // Tanaman yang wujud dalam skop semasa
   const hasSawit = useMemo(
-    () => geoFiltered.some((r) => r.jenis === 'sawit' && (Number(r.hasil) || 0) > 0),
-    [geoFiltered]
+    () => filtered.some((r) => r.jenis === 'sawit' && (Number(r.hasil) || 0) > 0),
+    [filtered]
   )
   const hasGetah = useMemo(
-    () => geoFiltered.some((r) => r.jenis === 'getah' && (Number(r.hasil) || 0) > 0),
-    [geoFiltered]
+    () => filtered.some((r) => r.jenis === 'getah' && (Number(r.hasil) || 0) > 0),
+    [filtered]
   )
 
   // Agregat hasil (increment) + hasil/hek (luas bulan terkini)
@@ -311,13 +189,13 @@ export default function DashboardPage() {
     }
   }, [filtered])
 
-  // Trend bulanan (increment, ikut tapisan geografi, abaikan tapisan bulan)
+  // Trend bulanan (increment)
   const trend = useMemo(() => {
     const map = new Map<
       string,
       { kod: string; nama: string; Sawit: number; Getah: number }
     >()
-    geoFiltered.forEach((r) => {
+    filtered.forEach((r) => {
       if (!map.has(r.kod_bulan)) {
         map.set(r.kod_bulan, {
           kod: r.kod_bulan,
@@ -333,30 +211,16 @@ export default function DashboardPage() {
     return Array.from(map.values())
       .filter((m) => m.Sawit !== 0 || m.Getah !== 0)
       .sort((a, b) => a.kod.localeCompare(b.kod))
-  }, [geoFiltered])
+  }, [filtered])
 
-  // Aras pecahan adaptif ikut tahap tapisan
-  // Tiada tapisan -> Wilayah; Wilayah -> Negeri; Negeri -> PO; PO -> Bulan
-  const groupLabel =
-    po !== ALL
-      ? 'Bulan'
-      : negeri !== ALL
-      ? 'Pusat Operasi'
-      : wilayah !== ALL
-      ? 'Negeri'
-      : 'Wilayah'
+  // Tiada PO dipilih -> pecah ikut Pusat Operasi; PO dipilih -> pecah ikut Bulan
+  const groupLabel = po !== ALL ? 'Bulan' : 'Pusat Operasi'
 
-  // Jadual pecahan adaptif
+  // Jadual pecahan
   const jadual = useMemo(() => {
     const info = (r: AugRow): { key: string; label: string } => {
       if (po !== ALL) return { key: r.kod_bulan, label: r.nama_bulan || r.kod_bulan }
-      if (negeri !== ALL) return { key: r.pol_pn || 'Lain-lain', label: r.pol_pn || 'Lain-lain' }
-      if (wilayah !== ALL) {
-        const n = negeriOf(r)
-        return { key: n, label: n }
-      }
-      const w = wilayahOf(r)
-      return { key: w, label: w }
+      return { key: r.pol_pn || 'Lain-lain', label: r.pol_pn || 'Lain-lain' }
     }
 
     const map = new Map<
@@ -385,19 +249,12 @@ export default function DashboardPage() {
       getahHasil: hasilInc(g.getahRows),
       getahLuas: luasLatest(g.getahRows),
     }))
-    if (groupLabel === 'Wilayah') {
-      return list.sort((a, b) => {
-        const ia = WILAYAH_ORDER.indexOf(a.key)
-        const ib = WILAYAH_ORDER.indexOf(b.key)
-        if (ia !== -1 && ib !== -1) return ia - ib
-        return a.label.localeCompare(b.label)
-      })
-    }
-    if (groupLabel === 'Bulan') {
-      return list.sort((a, b) => a.key.localeCompare(b.key))
-    }
-    return list.sort((a, b) => a.label.localeCompare(b.label))
-  }, [filtered, wilayah, negeri, po, groupLabel])
+    return list.sort((a, b) =>
+      groupLabel === 'Bulan'
+        ? a.key.localeCompare(b.key)
+        : a.label.localeCompare(b.label)
+    )
+  }, [filtered, po, groupLabel])
 
   if (loading) {
     return (
@@ -410,15 +267,8 @@ export default function DashboardPage() {
     )
   }
 
-  const labelWilayah = wilayah === ALL ? 'Semua Wilayah' : wilayah
-  const labelNegeri = negeri === ALL ? 'Semua Negeri' : negeri
   const namaPO = po === ALL ? 'Semua Pusat Operasi' : po
-  const labelBulan =
-    bulan === ALL
-      ? 'Setakat (semua bulan)'
-      : senaraiBulan.find((b) => b.kod === bulan)?.nama ?? bulan
-  const skop =
-    po !== ALL ? po : negeri !== ALL ? negeri : wilayah !== ALL ? wilayah : ''
+  const skop = po !== ALL ? po : ''
   const bilanganTanaman = (hasSawit ? 1 : 0) + (hasGetah ? 1 : 0)
   const colSpanKosong = 1 + (hasSawit ? 2 : 0) + (hasGetah ? 2 : 0)
 
@@ -434,47 +284,12 @@ export default function DashboardPage() {
             Laporan Hasil Bulanan
           </h1>
           <p className="text-sm text-gray-600">
-            Dashboard Awam — Prestasi Sawit &amp; Getah mengikut Wilayah, Negeri
-            &amp; Pusat Operasi
+            Dashboard Awam — Prestasi Sawit &amp; Getah mengikut Pusat Operasi
           </p>
         </div>
 
-        {/* Penapis bertingkat */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-              Wilayah
-            </label>
-            <select
-              value={wilayah}
-              onChange={(e) => pilihWilayah(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
-            >
-              <option value={ALL}>Semua Wilayah</option>
-              {senaraiWilayah.map((w) => (
-                <option key={w} value={w}>
-                  {w}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-              Negeri
-            </label>
-            <select
-              value={negeri}
-              onChange={(e) => pilihNegeri(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
-            >
-              <option value={ALL}>Semua Negeri</option>
-              {senaraiNegeri.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Penapis: Pusat Operasi sahaja */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <div>
             <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
               Pusat Operasi (PO)
@@ -492,31 +307,11 @@ export default function DashboardPage() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-              Bulan
-            </label>
-            <select
-              value={bulan}
-              onChange={(e) => setBulan(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
-            >
-              <option value={ALL}>Setakat (semua bulan)</option>
-              {senaraiBulan.map((b) => (
-                <option key={b.kod} value={b.kod}>
-                  {b.nama}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
         {/* Konteks */}
         <div className="mb-4 text-sm text-gray-700">
-          Menunjukkan: <span className="font-semibold">{labelWilayah}</span>{' '}
-          · <span className="font-semibold">{labelNegeri}</span>{' '}
-          · <span className="font-semibold">{namaPO}</span>{' '}
-          · <span className="font-semibold">{labelBulan}</span>
+          Menunjukkan: <span className="font-semibold">{namaPO}</span>
         </div>
 
         {/* Stats Cards */}
@@ -587,13 +382,13 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </div>
 
-        {/* Jadual pecahan adaptif */}
+        {/* Jadual pecahan */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">
               Pecahan Mengikut {groupLabel}
             </h2>
-            <p className="text-xs text-gray-500">{labelBulan}</p>
+            <p className="text-xs text-gray-500">{namaPO}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
@@ -666,6 +461,33 @@ export default function DashboardPage() {
                   </tr>
                 )}
               </tbody>
+              {jadual.length > 0 && (
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                    <td className="px-4 py-3 text-gray-900">JUMLAH</td>
+                    {hasSawit && (
+                      <td className="px-4 py-3 text-right text-orange-600">
+                        {nf(agg.sawitHasil)}
+                      </td>
+                    )}
+                    {hasSawit && (
+                      <td className="px-4 py-3 text-right text-gray-700">
+                        {nf(agg.sawitPerHek, 2)}
+                      </td>
+                    )}
+                    {hasGetah && (
+                      <td className="px-4 py-3 text-right text-amber-600">
+                        {nf(agg.getahHasil, 0)}
+                      </td>
+                    )}
+                    {hasGetah && (
+                      <td className="px-4 py-3 text-right text-gray-700">
+                        {nf(agg.getahPerHek, 2)}
+                      </td>
+                    )}
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         </div>
