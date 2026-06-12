@@ -24,6 +24,44 @@ const NO_SELECT_STYLE = {
 const AXIS_TICK = { fontSize: 12 }
 const ALL = 'ALL'
 
+// Padanan Pusat Operasi (pol_pn) -> Negeri (dari migrasi 0020)
+const PO_TO_NEGERI: Record<string, string> = {
+  BESUT: 'Terengganu',
+  DUNGUN: 'Terengganu',
+  'KUALA BERANG': 'Terengganu',
+  GERIK: 'Perak',
+  'KG GAJAH': 'Perak',
+  'KUALA KANGSAR': 'Perak',
+  MANJUNG: 'Perak',
+  SELAMA: 'Perak',
+  KUANTAN: 'Pahang',
+  LIPIS: 'Pahang',
+  PEKAN: 'Pahang',
+  RAUB: 'Pahang',
+  ROMPIN: 'Pahang',
+  MACHANG: 'Kelantan',
+  KEDAH: 'Kedah',
+  JOHOR: 'Johor',
+  MELAKA: 'Melaka',
+  'N SEMBILAN': 'Negeri Sembilan',
+  SELANGOR: 'Selangor',
+}
+
+// Padanan Negeri -> Wilayah (RISDA)
+const NEGERI_TO_WILAYAH: Record<string, string> = {
+  Perak: 'Utara',
+  Kedah: 'Utara',
+  Selangor: 'Utara',
+  Terengganu: 'Timur',
+  Kelantan: 'Timur',
+  Pahang: 'Tengah',
+  'Negeri Sembilan': 'Selatan',
+  Melaka: 'Selatan',
+  Johor: 'Selatan',
+}
+
+const WILAYAH_ORDER = ['Utara', 'Timur', 'Tengah', 'Selatan']
+
 type HasilRow = {
   id: string
   kod_bulan: string
@@ -42,6 +80,16 @@ type HasilRow = {
   pendapatan: number
   kos: number
   untung_rugi: number
+  negeri?: string | null
+  wilayah?: string | null
+}
+
+function negeriOf(r: HasilRow): string {
+  return r.negeri || PO_TO_NEGERI[(r.pol_pn || '').toUpperCase()] || 'Lain-lain'
+}
+
+function wilayahOf(r: HasilRow): string {
+  return r.wilayah || NEGERI_TO_WILAYAH[negeriOf(r)] || 'Lain-lain'
 }
 
 function nf(n: number, d = 1) {
@@ -55,6 +103,8 @@ function sum(arr: HasilRow[], key: keyof HasilRow): number {
 export default function DashboardPage() {
   const [rows, setRows] = useState<HasilRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [wilayah, setWilayah] = useState<string>(ALL)
+  const [negeri, setNegeri] = useState<string>(ALL)
   const [po, setPo] = useState<string>(ALL)
   const [bulan, setBulan] = useState<string>(ALL)
 
@@ -99,14 +149,40 @@ export default function DashboardPage() {
     }
   }, [])
 
-  // Senarai Pusat Operasi (unik) — pusat operasi sahaja
+  // Senarai Wilayah (susunan tetap, hanya yang ada data)
+  const senaraiWilayah = useMemo(() => {
+    const set = new Set<string>()
+    rows.forEach((r) => set.add(wilayahOf(r)))
+    const ordered = WILAYAH_ORDER.filter((w) => set.has(w))
+    const extra = Array.from(set)
+      .filter((w) => !WILAYAH_ORDER.includes(w))
+      .sort((a, b) => a.localeCompare(b))
+    return [...ordered, ...extra]
+  }, [rows])
+
+  // Senarai Negeri (bergantung pada Wilayah terpilih)
+  const senaraiNegeri = useMemo(() => {
+    const set = new Set<string>()
+    rows.forEach((r) => {
+      if (wilayah === ALL || wilayahOf(r) === wilayah) set.add(negeriOf(r))
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [rows, wilayah])
+
+  // Senarai Pusat Operasi (bergantung pada Wilayah + Negeri terpilih)
   const senaraiPO = useMemo(() => {
     const set = new Set<string>()
     rows.forEach((r) => {
-      if (r.pol_pn) set.add(r.pol_pn)
+      if (
+        (wilayah === ALL || wilayahOf(r) === wilayah) &&
+        (negeri === ALL || negeriOf(r) === negeri) &&
+        r.pol_pn
+      ) {
+        set.add(r.pol_pn)
+      }
     })
     return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [rows])
+  }, [rows, wilayah, negeri])
 
   // Senarai bulan (unik, hanya yang ada data)
   const senaraiBulan = useMemo(() => {
@@ -120,18 +196,35 @@ export default function DashboardPage() {
     )
   }, [rows])
 
-  // Baris ditapis ikut PO + bulan
-  const filtered = useMemo(
+  function pilihWilayah(v: string) {
+    setWilayah(v)
+    setNegeri(ALL)
+    setPo(ALL)
+  }
+  function pilihNegeri(v: string) {
+    setNegeri(v)
+    setPo(ALL)
+  }
+
+  // Tapisan geografi (Wilayah -> Negeri -> PO), abaikan bulan
+  const geoFiltered = useMemo(
     () =>
       rows.filter(
         (r) =>
-          (po === ALL || r.pol_pn === po) &&
-          (bulan === ALL || r.kod_bulan === bulan)
+          (wilayah === ALL || wilayahOf(r) === wilayah) &&
+          (negeri === ALL || negeriOf(r) === negeri) &&
+          (po === ALL || r.pol_pn === po)
       ),
-    [rows, po, bulan]
+    [rows, wilayah, negeri, po]
   )
 
-  // Agregat hasil + hasil/hek (dikira dari jumlah, bukan purata baris)
+  // Baris ditapis penuh (termasuk bulan)
+  const filtered = useMemo(
+    () => geoFiltered.filter((r) => bulan === ALL || r.kod_bulan === bulan),
+    [geoFiltered, bulan]
+  )
+
+  // Agregat hasil + hasil/hek
   const agg = useMemo(() => {
     const sawit = filtered.filter((r) => r.jenis === 'sawit')
     const getah = filtered.filter((r) => r.jenis === 'getah')
@@ -147,14 +240,13 @@ export default function DashboardPage() {
     }
   }, [filtered])
 
-  // Trend bulanan (ikut PO terpilih, abaikan tapisan bulan)
+  // Trend bulanan (ikut tapisan geografi, abaikan tapisan bulan)
   const trend = useMemo(() => {
-    const ikutPO = rows.filter((r) => po === ALL || r.pol_pn === po)
     const map = new Map<
       string,
       { kod: string; nama: string; Sawit: number; Getah: number }
     >()
-    ikutPO.forEach((r) => {
+    geoFiltered.forEach((r) => {
       if (!map.has(r.kod_bulan)) {
         map.set(r.kod_bulan, {
           kod: r.kod_bulan,
@@ -170,14 +262,33 @@ export default function DashboardPage() {
     return Array.from(map.values())
       .filter((m) => m.Sawit > 0 || m.Getah > 0)
       .sort((a, b) => a.kod.localeCompare(b.kod))
-  }, [rows, po])
+  }, [geoFiltered])
 
-  // Jadual pecahan ikut Pusat Operasi (ikut tapisan semasa)
+  // Aras pecahan adaptif ikut tahap tapisan
+  const groupLabel =
+    po !== ALL
+      ? 'Projek'
+      : negeri !== ALL
+      ? 'Pusat Operasi'
+      : wilayah !== ALL
+      ? 'Negeri'
+      : 'Wilayah'
+
+  // Jadual pecahan adaptif
   const jadual = useMemo(() => {
+    const keyOf = (r: HasilRow) =>
+      po !== ALL
+        ? r.nama || 'Lain-lain'
+        : negeri !== ALL
+        ? r.pol_pn || 'Lain-lain'
+        : wilayah !== ALL
+        ? negeriOf(r)
+        : wilayahOf(r)
+
     const map = new Map<
       string,
       {
-        pol_pn: string
+        label: string
         sawitHasil: number
         sawitLuas: number
         getahHasil: number
@@ -185,16 +296,17 @@ export default function DashboardPage() {
       }
     >()
     filtered.forEach((r) => {
-      if (!map.has(r.pol_pn)) {
-        map.set(r.pol_pn, {
-          pol_pn: r.pol_pn,
+      const key = keyOf(r)
+      if (!map.has(key)) {
+        map.set(key, {
+          label: key,
           sawitHasil: 0,
           sawitLuas: 0,
           getahHasil: 0,
           getahLuas: 0,
         })
       }
-      const m = map.get(r.pol_pn)!
+      const m = map.get(key)!
       if (r.jenis === 'sawit') {
         m.sawitHasil += Number(r.hasil) || 0
         m.sawitLuas += Number(r.luas_operasi) || 0
@@ -203,10 +315,17 @@ export default function DashboardPage() {
         m.getahLuas += Number(r.luas_operasi) || 0
       }
     })
-    return Array.from(map.values()).sort((a, b) =>
-      a.pol_pn.localeCompare(b.pol_pn)
-    )
-  }, [filtered])
+    const list = Array.from(map.values())
+    if (groupLabel === 'Wilayah') {
+      return list.sort((a, b) => {
+        const ia = WILAYAH_ORDER.indexOf(a.label)
+        const ib = WILAYAH_ORDER.indexOf(b.label)
+        if (ia !== -1 && ib !== -1) return ia - ib
+        return a.label.localeCompare(b.label)
+      })
+    }
+    return list.sort((a, b) => a.label.localeCompare(b.label))
+  }, [filtered, wilayah, negeri, po, groupLabel])
 
   if (loading) {
     return (
@@ -219,11 +338,15 @@ export default function DashboardPage() {
     )
   }
 
+  const labelWilayah = wilayah === ALL ? 'Semua Wilayah' : wilayah
+  const labelNegeri = negeri === ALL ? 'Semua Negeri' : negeri
   const namaPO = po === ALL ? 'Semua Pusat Operasi' : po
   const labelBulan =
     bulan === ALL
       ? 'Setakat (semua bulan)'
       : senaraiBulan.find((b) => b.kod === bulan)?.nama ?? bulan
+  const skop =
+    po !== ALL ? po : negeri !== ALL ? negeri : wilayah !== ALL ? wilayah : ''
 
   return (
     <div
@@ -237,12 +360,47 @@ export default function DashboardPage() {
             Laporan Hasil Bulanan
           </h1>
           <p className="text-sm text-gray-600">
-            Dashboard Awam — Prestasi Sawit &amp; Getah mengikut Pusat Operasi
+            Dashboard Awam — Prestasi Sawit &amp; Getah mengikut Wilayah, Negeri
+            &amp; Pusat Operasi
           </p>
         </div>
 
-        {/* Penapis */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        {/* Penapis bertingkat */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
+              Wilayah
+            </label>
+            <select
+              value={wilayah}
+              onChange={(e) => pilihWilayah(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            >
+              <option value={ALL}>Semua Wilayah</option>
+              {senaraiWilayah.map((w) => (
+                <option key={w} value={w}>
+                  {w}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
+              Negeri
+            </label>
+            <select
+              value={negeri}
+              onChange={(e) => pilihNegeri(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            >
+              <option value={ALL}>Semua Negeri</option>
+              {senaraiNegeri.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
               Pusat Operasi (PO)
@@ -281,8 +439,10 @@ export default function DashboardPage() {
 
         {/* Konteks */}
         <div className="mb-4 text-sm text-gray-700">
-          Menunjukkan: <span className="font-semibold">{namaPO}</span> ·{' '}
-          <span className="font-semibold">{labelBulan}</span>
+          Menunjukkan: <span className="font-semibold">{labelWilayah}</span>{' '}
+          · <span className="font-semibold">{labelNegeri}</span>{' '}
+          · <span className="font-semibold">{namaPO}</span>{' '}
+          · <span className="font-semibold">{labelBulan}</span>
         </div>
 
         {/* Stats Cards */}
@@ -315,7 +475,7 @@ export default function DashboardPage() {
         {/* Chart */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Trend Hasil Mengikut Bulan {po !== ALL ? `— ${po}` : ''}
+            Trend Hasil Mengikut Bulan {skop ? `— ${skop}` : ''}
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={trend}>
@@ -333,11 +493,11 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </div>
 
-        {/* Jadual pecahan ikut PO */}
+        {/* Jadual pecahan adaptif */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">
-              Pecahan Mengikut Pusat Operasi
+              Pecahan Mengikut {groupLabel}
             </h2>
             <p className="text-xs text-gray-500">{labelBulan}</p>
           </div>
@@ -346,7 +506,7 @@ export default function DashboardPage() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                    Pusat Operasi
+                    {groupLabel}
                   </th>
                   <th className="px-4 py-3 text-right font-semibold text-gray-900">
                     Sawit (MT)
@@ -365,11 +525,11 @@ export default function DashboardPage() {
               <tbody>
                 {jadual.map((r) => (
                   <tr
-                    key={r.pol_pn}
+                    key={r.label}
                     className="border-b border-gray-200 hover:bg-gray-50"
                   >
                     <td className="px-4 py-3 font-medium text-gray-900">
-                      {r.pol_pn}
+                      {r.label}
                     </td>
                     <td className="px-4 py-3 text-right text-orange-600 font-semibold">
                       {nf(r.sawitHasil)}
