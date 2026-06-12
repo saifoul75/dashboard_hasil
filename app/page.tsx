@@ -280,6 +280,16 @@ export default function DashboardPage() {
     [geoFiltered, bulan]
   )
 
+  // Tanaman yang wujud dalam skop geografi semasa
+  const hasSawit = useMemo(
+    () => geoFiltered.some((r) => r.jenis === 'sawit' && (Number(r.hasil) || 0) > 0),
+    [geoFiltered]
+  )
+  const hasGetah = useMemo(
+    () => geoFiltered.some((r) => r.jenis === 'getah' && (Number(r.hasil) || 0) > 0),
+    [geoFiltered]
+  )
+
   // Agregat hasil (increment) + hasil/hek (luas bulan terkini)
   const agg = useMemo(() => {
     const sawit = filtered.filter((r) => r.jenis === 'sawit')
@@ -404,6 +414,8 @@ export default function DashboardPage() {
       : senaraiBulan.find((b) => b.kod === bulan)?.nama ?? bulan
   const skop =
     po !== ALL ? po : negeri !== ALL ? negeri : wilayah !== ALL ? wilayah : ''
+  const bilanganTanaman = (hasSawit ? 1 : 0) + (hasGetah ? 1 : 0)
+  const colSpanKosong = 1 + (hasSawit ? 2 : 0) + (hasGetah ? 2 : 0)
 
   return (
     <div
@@ -503,31 +515,47 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-              Hasil Sawit
-            </div>
-            <div className="text-3xl font-bold text-orange-600">
-              {nf(agg.sawitHasil)} MT
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              {nf(agg.sawitPerHek, 2)} MT/hek
-            </p>
+        {bilanganTanaman === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8 text-center text-gray-500">
+            Tiada data hasil untuk pilihan ini.
           </div>
+        ) : (
+          <div
+            className={
+              bilanganTanaman === 2
+                ? 'grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8'
+                : 'grid grid-cols-1 gap-6 mb-8'
+            }
+          >
+            {hasSawit && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                  Hasil Sawit
+                </div>
+                <div className="text-3xl font-bold text-orange-600">
+                  {nf(agg.sawitHasil)} MT
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {nf(agg.sawitPerHek, 2)} MT/hek
+                </p>
+              </div>
+            )}
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-              Hasil Getah
-            </div>
-            <div className="text-3xl font-bold text-amber-600">
-              {nf(agg.getahHasil, 0)} kg
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              {nf(agg.getahPerHek, 2)} kg/hek
-            </p>
+            {hasGetah && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                  Hasil Getah
+                </div>
+                <div className="text-3xl font-bold text-amber-600">
+                  {nf(agg.getahHasil, 0)} kg
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {nf(agg.getahPerHek, 2)} kg/hek
+                </p>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         {/* Chart */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
@@ -544,8 +572,12 @@ export default function DashboardPage() {
                 }
               />
               <Legend />
-              <Bar dataKey="Sawit" fill="#ea580c" name="Sawit (MT)" />
-              <Bar dataKey="Getah" fill="#b45309" name="Getah (kg)" />
+              {hasSawit && (
+                <Bar dataKey="Sawit" fill="#ea580c" name="Sawit (MT)" />
+              )}
+              {hasGetah && (
+                <Bar dataKey="Getah" fill="#b45309" name="Getah (kg)" />
+              )}
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -565,18 +597,26 @@ export default function DashboardPage() {
                   <th className="px-4 py-3 text-left font-semibold text-gray-900">
                     {groupLabel}
                   </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-900">
-                    Sawit (MT)
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-900">
-                    MT/hek
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-900">
-                    Getah (kg)
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-900">
-                    kg/hek
-                  </th>
+                  {hasSawit && (
+                    <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                      Sawit (MT)
+                    </th>
+                  )}
+                  {hasSawit && (
+                    <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                      MT/hek
+                    </th>
+                  )}
+                  {hasGetah && (
+                    <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                      Getah (kg)
+                    </th>
+                  )}
+                  {hasGetah && (
+                    <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                      kg/hek
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -588,24 +628,32 @@ export default function DashboardPage() {
                     <td className="px-4 py-3 font-medium text-gray-900">
                       {r.label}
                     </td>
-                    <td className="px-4 py-3 text-right text-orange-600 font-semibold">
-                      {nf(r.sawitHasil)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-700">
-                      {nf(r.sawitLuas > 0 ? r.sawitHasil / r.sawitLuas : 0, 2)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-amber-600 font-semibold">
-                      {nf(r.getahHasil, 0)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-700">
-                      {nf(r.getahLuas > 0 ? r.getahHasil / r.getahLuas : 0, 2)}
-                    </td>
+                    {hasSawit && (
+                      <td className="px-4 py-3 text-right text-orange-600 font-semibold">
+                        {nf(r.sawitHasil)}
+                      </td>
+                    )}
+                    {hasSawit && (
+                      <td className="px-4 py-3 text-right text-gray-700">
+                        {nf(r.sawitLuas > 0 ? r.sawitHasil / r.sawitLuas : 0, 2)}
+                      </td>
+                    )}
+                    {hasGetah && (
+                      <td className="px-4 py-3 text-right text-amber-600 font-semibold">
+                        {nf(r.getahHasil, 0)}
+                      </td>
+                    )}
+                    {hasGetah && (
+                      <td className="px-4 py-3 text-right text-gray-700">
+                        {nf(r.getahLuas > 0 ? r.getahHasil / r.getahLuas : 0, 2)}
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {jadual.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={colSpanKosong}
                       className="px-4 py-6 text-center text-gray-500"
                     >
                       Tiada data untuk pilihan ini.
