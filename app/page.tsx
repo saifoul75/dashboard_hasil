@@ -1,13 +1,28 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
+
+const NO_SELECT_STYLE = {
+  userSelect: 'none' as const,
+  WebkitUserSelect: 'none' as const,
+}
+const AXIS_TICK = { fontSize: 12 }
+const ALL = 'ALL'
 
 type HasilRow = {
   id: string
@@ -29,20 +44,23 @@ type HasilRow = {
   untung_rugi: number
 }
 
-type BulanData = {
-  kod: string
-  nama: string
-  sawit_hasil: number
-  getah_hasil: number
+function nf(n: number, d = 1) {
+  return (n || 0).toLocaleString('ms-MY', { maximumFractionDigits: d })
+}
+
+function sum(arr: HasilRow[], key: keyof HasilRow): number {
+  return arr.reduce((s, r) => s + (Number(r[key]) || 0), 0)
 }
 
 export default function DashboardPage() {
-  const [data, setData] = useState<BulanData[]>([])
+  const [rows, setRows] = useState<HasilRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [po, setPo] = useState<string>(ALL)
+  const [bulan, setBulan] = useState<string>(ALL)
 
   useEffect(() => {
-    async function fetch() {
-      const { data: rows, error } = await supabase
+    async function fetchData() {
+      const { data, error } = await supabase
         .from('hasil_bulanan')
         .select('*')
         .order('kod_bulan', { ascending: true })
@@ -52,37 +70,10 @@ export default function DashboardPage() {
         setLoading(false)
         return
       }
-
-      const grouped = (rows as HasilRow[]).reduce(
-        (acc: Record<string, BulanData>, row) => {
-          if (!acc[row.kod_bulan]) {
-            acc[row.kod_bulan] = {
-              kod: row.kod_bulan,
-              nama: row.nama_bulan,
-              sawit_hasil: 0,
-              getah_hasil: 0,
-            }
-          }
-          if (row.jenis === 'sawit') {
-            acc[row.kod_bulan].sawit_hasil += row.hasil || 0
-          } else {
-            acc[row.kod_bulan].getah_hasil += row.hasil || 0
-          }
-          return acc
-        },
-        {}
-      )
-
-      // Hanya papar bulan yang ada hasil sebenar (tapis baris placeholder kosong)
-      const bulanBerdata = Object.values(grouped).filter(
-        (b) => b.sawit_hasil > 0 || b.getah_hasil > 0
-      )
-
-      setData(bulanBerdata)
+      setRows((data as HasilRow[]) || [])
       setLoading(false)
     }
-
-    fetch()
+    fetchData()
   }, [])
 
   // Halang copy/paste, right-click, dan keyboard shortcuts
@@ -91,18 +82,15 @@ export default function DashboardPage() {
     const blockCopy = (e: ClipboardEvent) => e.preventDefault()
     const blockKeys = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase()
-      // Ctrl/Cmd + C/X/A/S/P/U  dan  F12
       if ((e.ctrlKey || e.metaKey) && ['c', 'x', 'a', 's', 'p', 'u'].includes(k)) {
         e.preventDefault()
       }
       if (k === 'f12') e.preventDefault()
     }
-
     document.addEventListener('contextmenu', blockContextMenu)
     document.addEventListener('copy', blockCopy)
     document.addEventListener('cut', blockCopy)
     document.addEventListener('keydown', blockKeys)
-
     return () => {
       document.removeEventListener('contextmenu', blockContextMenu)
       document.removeEventListener('copy', blockCopy)
@@ -110,6 +98,120 @@ export default function DashboardPage() {
       document.removeEventListener('keydown', blockKeys)
     }
   }, [])
+
+  // Senarai Pusat Operasi (unik)
+  const senaraiPO = useMemo(() => {
+    const map = new Map<string, string>()
+    rows.forEach((r) => {
+      if (r.pol_pn) map.set(r.pol_pn, r.nama)
+    })
+    return Array.from(map, ([kod, nama]) => ({ kod, nama })).sort((a, b) =>
+      a.kod.localeCompare(b.kod)
+    )
+  }, [rows])
+
+  // Senarai bulan (unik, hanya yang ada data)
+  const senaraiBulan = useMemo(() => {
+    const map = new Map<string, string>()
+    rows.forEach((r) => {
+      if ((Number(r.hasil) || 0) > 0 && r.kod_bulan)
+        map.set(r.kod_bulan, r.nama_bulan)
+    })
+    return Array.from(map, ([kod, nama]) => ({ kod, nama })).sort((a, b) =>
+      a.kod.localeCompare(b.kod)
+    )
+  }, [rows])
+
+  // Baris ditapis ikut PO + bulan
+  const filtered = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          (po === ALL || r.pol_pn === po) &&
+          (bulan === ALL || r.kod_bulan === bulan)
+      ),
+    [rows, po, bulan]
+  )
+
+  // Agregat hasil + hasil/hek (dikira dari jumlah, bukan purata baris)
+  const agg = useMemo(() => {
+    const sawit = filtered.filter((r) => r.jenis === 'sawit')
+    const getah = filtered.filter((r) => r.jenis === 'getah')
+    const sawitHasil = sum(sawit, 'hasil')
+    const getahHasil = sum(getah, 'hasil')
+    const sawitLuas = sum(sawit, 'luas_operasi')
+    const getahLuas = sum(getah, 'luas_operasi')
+    return {
+      sawitHasil,
+      getahHasil,
+      sawitPerHek: sawitLuas > 0 ? sawitHasil / sawitLuas : 0,
+      getahPerHek: getahLuas > 0 ? getahHasil / getahLuas : 0,
+      peserta: sum(filtered, 'peserta'),
+    }
+  }, [filtered])
+
+  // Trend bulanan (ikut PJ terpilih, abaikan tapisan bulan)
+  const trend = useMemo(() => {
+    const ikutPO = rows.filter((r) => po === ALL || r.pol_pn === po)
+    const map = new Map<
+      string,
+      { kod: string; nama: string; Sawit: number; Getah: number }
+    >()
+    ikutPO.forEach((r) => {
+      if (!map.has(r.kod_bulan)) {
+        map.set(r.kod_bulan, {
+          kod: r.kod_bulan,
+          nama: r.nama_bulan,
+          Sawit: 0,
+          Getah: 0,
+        })
+      }
+      const m = map.get(r.kod_bulan)!
+      if (r.jenis === 'sawit') m.Sawit += Number(r.hasil) || 0
+      else m.Getah += Number(r.hasil) || 0
+    })
+    return Array.from(map.values())
+      .filter((m) => m.Sawit > 0 || m.Getah > 0)
+      .sort((a, b) => a.kod.localeCompare(b.kod))
+  }, [rows, po])
+
+  // Jadual pecahan ikut PO (ikut tapisan semasa)
+  const jadual = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        pol_pn: string
+        nama: string
+        sawitHasil: number
+        sawitLuas: number
+        getahHasil: number
+        getahLuas: number
+      }
+    >()
+    filtered.forEach((r) => {
+      if (!map.has(r.pol_pn)) {
+        map.set(r.pol_pn, {
+          pol_pn: r.pol_pn,
+          nama: r.nama,
+          sawitHasil: 0,
+          sawitLuas: 0,
+          getahHasil: 0,
+          getahLuas: 0,
+        })
+      }
+      const m = map.get(r.pol_pn)!
+      if (r.jenis === 'sawit') {
+        m.sawitHasil += Number(r.hasil) || 0
+        m.sawitLuas += Number(r.luas_operasi) || 0
+      } else {
+        m.getahHasil += Number(r.hasil) || 0
+        m.getahLuas += Number(r.luas_operasi) || 0
+      }
+    })
+    return Array.from(map.values()).sort((a, b) =>
+      a.pol_pn.localeCompare(b.pol_pn)
+    )
+  }, [filtered])
 
   if (loading) {
     return (
@@ -122,80 +224,196 @@ export default function DashboardPage() {
     )
   }
 
-  const totalSawit = data.reduce((sum, d) => sum + d.sawit_hasil, 0)
-  const totalGetah = data.reduce((sum, d) => sum + d.getah_hasil, 0)
-  const latestMonth = data[data.length - 1]
+  const namaPO =
+    po === ALL ? 'Semua Pusat Operasi' : `${po} — ${senaraiPO.find((p) => p.kod === po)?.nama ?? ''}`
+  const labelBulan =
+    bulan === ALL
+      ? 'Setakat (semua bulan)'
+      : senaraiBulan.find((b) => b.kod === bulan)?.nama ?? bulan
 
   return (
     <div
       className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6 select-none"
-      style={{ WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none', userSelect: 'none' }}
+      style={NO_SELECT_STYLE}
     >
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Laporan Hasil Bulanan</h1>
-          <p className="text-gray-600">Dashboard Awam — Ringkasan Prestasi Sawit & Getah</p>
+        <div className="mb-6">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-1">
+            Laporan Hasil Bulanan
+          </h1>
+          <p className="text-gray-600">
+            Dashboard Awam — Prestasi Sawit &amp; Getah mengikut Pusat Operasi
+          </p>
+        </div>
+
+        {/* Penapis */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
+              Pusat Operasi (PO)
+            </label>
+            <select
+              value={po}
+              onChange={(e) => setPo(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value={ALL}>Semua Pusat Operasi</option>
+              {senaraiPO.map((p) => (
+                <option key={p.kod} value={p.kod}>
+                  {p.kod} — {p.nama}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
+              Bulan
+            </label>
+            <select
+              value={bulan}
+              onChange={(e) => setBulan(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value={ALL}>Setakat (semua bulan)</option>
+              {senaraiBulan.map((b) => (
+                <option key={b.kod} value={b.kod}>
+                  {b.nama}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Konteks */}
+        <div className="mb-4 text-sm text-gray-700">
+          Menunjukkan: <span className="font-semibold">{namaPO}</span> ·{' '}
+          <span className="font-semibold">{labelBulan}</span>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">Total Hasil Sawit</div>
-            <div className="text-3xl font-bold text-orange-600">{totalSawit.toLocaleString('ms-MY', { maximumFractionDigits: 1 })} MT</div>
-            <p className="text-xs text-gray-500 mt-2">{data.length} bulan data</p>
+            <div className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
+              Hasil Sawit
+            </div>
+            <div className="text-3xl font-bold text-orange-600">
+              {nf(agg.sawitHasil)} MT
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              {nf(agg.sawitPerHek, 2)} MT/hek
+            </p>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">Total Hasil Getah</div>
-            <div className="text-3xl font-bold text-amber-600">{totalGetah.toLocaleString('ms-MY')} KG</div>
-            <p className="text-xs text-gray-500 mt-2">{data.length} bulan data</p>
+            <div className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
+              Hasil Getah
+            </div>
+            <div className="text-3xl font-bold text-amber-600">
+              {nf(agg.getahHasil, 0)} kg
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              {nf(agg.getahPerHek, 2)} kg/hek
+            </p>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">Bulan Terkini</div>
-            <div className="text-2xl font-bold text-gray-900">{latestMonth?.nama}</div>
-            <p className="text-xs text-gray-500 mt-2">Setakat {latestMonth?.nama}</p>
+            <div className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
+              Jumlah Peserta
+            </div>
+            <div className="text-3xl font-bold text-gray-900">
+              {nf(agg.peserta, 0)}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">{labelBulan}</p>
           </div>
         </div>
 
         {/* Chart */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Trend Hasil Mengikut Bulan</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Trend Hasil Mengikut Bulan {po !== ALL ? `— ${po}` : ''}
+          </h2>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data}>
-              <XAxis dataKey="nama" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(v) => (typeof v === 'number' ? v.toLocaleString('ms-MY') : v)} />
-              <Bar dataKey="sawit_hasil" fill="#ea580c" name="Sawit (MT)" />
-              <Bar dataKey="getah_hasil" fill="#b45309" name="Getah (KG)" />
+            <BarChart data={trend}>
+              <XAxis dataKey="nama" tick={AXIS_TICK} />
+              <YAxis tick={AXIS_TICK} />
+              <Tooltip
+                formatter={(v) =>
+                  typeof v === 'number' ? v.toLocaleString('ms-MY') : v
+                }
+              />
+              <Legend />
+              <Bar dataKey="Sawit" fill="#ea580c" name="Sawit (MT)" />
+              <Bar dataKey="Getah" fill="#b45309" name="Getah (kg)" />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Table */}
+        {/* Jadual pecahan ikut PO */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Pecahan Mengikut Pusat Operasi
+            </h2>
+            <p className="text-xs text-gray-500">{labelBulan}</p>
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left font-semibold text-gray-900">Bulan</th>
-                  <th className="px-6 py-3 text-right font-semibold text-gray-900">Hasil Sawit (MT)</th>
-                  <th className="px-6 py-3 text-right font-semibold text-gray-900">Hasil Getah (KG)</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-900">
+                    Pusat Operasi
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                    Sawit (MT)
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                    MT/hek
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                    Getah (kg)
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                    kg/hek
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {data.map((row, i) => (
-                  <tr key={i} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900">{row.nama}</td>
-                    <td className="px-6 py-4 text-right text-orange-600 font-semibold">
-                      {row.sawit_hasil.toLocaleString('ms-MY', { maximumFractionDigits: 1 })}
+                {jadual.map((r) => (
+                  <tr
+                    key={r.pol_pn}
+                    className="border-b border-gray-200 hover:bg-gray-50"
+                  >
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      <span className="font-mono text-xs text-gray-500">
+                        {r.pol_pn}
+                      </span>{' '}
+                      {r.nama}
                     </td>
-                    <td className="px-6 py-4 text-right text-amber-600 font-semibold">
-                      {row.getah_hasil.toLocaleString('ms-MY')}
+                    <td className="px-4 py-3 text-right text-orange-600 font-semibold">
+                      {nf(r.sawitHasil)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-700">
+                      {nf(r.sawitLuas > 0 ? r.sawitHasil / r.sawitLuas : 0, 2)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-amber-600 font-semibold">
+                      {nf(r.getahHasil, 0)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-700">
+                      {nf(r.getahLuas > 0 ? r.getahHasil / r.getahLuas : 0, 2)}
                     </td>
                   </tr>
                 ))}
+                {jadual.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-4 py-6 text-center text-gray-500"
+                    >
+                      Tiada data untuk pilihan ini.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
