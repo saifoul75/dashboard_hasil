@@ -73,7 +73,12 @@ export default function DashboardPage() {
         {}
       )
 
-      setData(Object.values(grouped))
+      // Hanya papar bulan yang ada hasil sebenar (tapis baris placeholder kosong)
+      const bulanBerdata = Object.values(grouped).filter(
+        (b) => b.sawit_hasil > 0 || b.getah_hasil > 0
+      )
+
+      setData(bulanBerdata)
       setLoading(false)
     }
 
