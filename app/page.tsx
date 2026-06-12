@@ -99,15 +99,13 @@ export default function DashboardPage() {
     }
   }, [])
 
-  // Senarai Pusat Operasi (unik)
+  // Senarai Pusat Operasi (unik) — pusat operasi sahaja
   const senaraiPO = useMemo(() => {
-    const map = new Map<string, string>()
+    const set = new Set<string>()
     rows.forEach((r) => {
-      if (r.pol_pn) map.set(r.pol_pn, r.nama)
+      if (r.pol_pn) set.add(r.pol_pn)
     })
-    return Array.from(map, ([kod, nama]) => ({ kod, nama })).sort((a, b) =>
-      a.kod.localeCompare(b.kod)
-    )
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
   }, [rows])
 
   // Senarai bulan (unik, hanya yang ada data)
@@ -150,7 +148,7 @@ export default function DashboardPage() {
     }
   }, [filtered])
 
-  // Trend bulanan (ikut PJ terpilih, abaikan tapisan bulan)
+  // Trend bulanan (ikut PO terpilih, abaikan tapisan bulan)
   const trend = useMemo(() => {
     const ikutPO = rows.filter((r) => po === ALL || r.pol_pn === po)
     const map = new Map<
@@ -175,13 +173,12 @@ export default function DashboardPage() {
       .sort((a, b) => a.kod.localeCompare(b.kod))
   }, [rows, po])
 
-  // Jadual pecahan ikut PO (ikut tapisan semasa)
+  // Jadual pecahan ikut Pusat Operasi (ikut tapisan semasa)
   const jadual = useMemo(() => {
     const map = new Map<
       string,
       {
         pol_pn: string
-        nama: string
         sawitHasil: number
         sawitLuas: number
         getahHasil: number
@@ -192,7 +189,6 @@ export default function DashboardPage() {
       if (!map.has(r.pol_pn)) {
         map.set(r.pol_pn, {
           pol_pn: r.pol_pn,
-          nama: r.nama,
           sawitHasil: 0,
           sawitLuas: 0,
           getahHasil: 0,
@@ -224,8 +220,7 @@ export default function DashboardPage() {
     )
   }
 
-  const namaPO =
-    po === ALL ? 'Semua Pusat Operasi' : `${po} — ${senaraiPO.find((p) => p.kod === po)?.nama ?? ''}`
+  const namaPO = po === ALL ? 'Semua Pusat Operasi' : po
   const labelBulan =
     bulan === ALL
       ? 'Setakat (semua bulan)'
@@ -242,7 +237,7 @@ export default function DashboardPage() {
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-1">
             Laporan Hasil Bulanan
           </h1>
-          <p className="text-gray-600">
+          <p className="text-sm text-gray-600">
             Dashboard Awam — Prestasi Sawit &amp; Getah mengikut Pusat Operasi
           </p>
         </div>
@@ -259,9 +254,9 @@ export default function DashboardPage() {
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
             >
               <option value={ALL}>Semua Pusat Operasi</option>
-              {senaraiPO.map((p) => (
-                <option key={p.kod} value={p.kod}>
-                  {p.kod} — {p.nama}
+              {senaraiPO.map((kod) => (
+                <option key={kod} value={kod}>
+                  {kod}
                 </option>
               ))}
             </select>
@@ -294,7 +289,7 @@ export default function DashboardPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
+            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
               Hasil Sawit
             </div>
             <div className="text-3xl font-bold text-orange-600">
@@ -306,7 +301,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
+            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
               Hasil Getah
             </div>
             <div className="text-3xl font-bold text-amber-600">
@@ -318,7 +313,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
+            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
               Jumlah Peserta
             </div>
             <div className="text-3xl font-bold text-gray-900">
@@ -385,10 +380,7 @@ export default function DashboardPage() {
                     className="border-b border-gray-200 hover:bg-gray-50"
                   >
                     <td className="px-4 py-3 font-medium text-gray-900">
-                      <span className="font-mono text-xs text-gray-500">
-                        {r.pol_pn}
-                      </span>{' '}
-                      {r.nama}
+                      {r.pol_pn}
                     </td>
                     <td className="px-4 py-3 text-right text-orange-600 font-semibold">
                       {nf(r.sawitHasil)}
