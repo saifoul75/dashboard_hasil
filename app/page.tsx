@@ -80,6 +80,32 @@ export default function DashboardPage() {
     fetch()
   }, [])
 
+  // Halang copy/paste, right-click, dan keyboard shortcuts
+  useEffect(() => {
+    const blockContextMenu = (e: MouseEvent) => e.preventDefault()
+    const blockCopy = (e: ClipboardEvent) => e.preventDefault()
+    const blockKeys = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase()
+      // Ctrl/Cmd + C/X/A/S/P/U  dan  F12
+      if ((e.ctrlKey || e.metaKey) && ['c', 'x', 'a', 's', 'p', 'u'].includes(k)) {
+        e.preventDefault()
+      }
+      if (k === 'f12') e.preventDefault()
+    }
+
+    document.addEventListener('contextmenu', blockContextMenu)
+    document.addEventListener('copy', blockCopy)
+    document.addEventListener('cut', blockCopy)
+    document.addEventListener('keydown', blockKeys)
+
+    return () => {
+      document.removeEventListener('contextmenu', blockContextMenu)
+      document.removeEventListener('copy', blockCopy)
+      document.removeEventListener('cut', blockCopy)
+      document.removeEventListener('keydown', blockKeys)
+    }
+  }, [])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
@@ -96,7 +122,10 @@ export default function DashboardPage() {
   const latestMonth = data[data.length - 1]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+    <div
+      className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6 select-none"
+      style={{ WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none', userSelect: 'none' }}
+    >
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
