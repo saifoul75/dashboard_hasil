@@ -24,7 +24,18 @@ const NO_SELECT_STYLE = {
 const AXIS_TICK = { fontSize: 12 }
 const ALL = 'ALL'
 
-// Padanan Pusat Operasi (pol_pn) -> Negeri (dari migrasi 0020)
+// Normalisasi nama PO: huruf besar, titik jadi jarak, buang jarak berlebihan
+function normPO(s: string): string {
+  return (s || '')
+    .toUpperCase()
+    .split('.')
+    .join(' ')
+    .split(' ')
+    .filter(Boolean)
+    .join(' ')
+}
+
+// Padanan Pusat Operasi (pol_pn) -> Negeri (kunci dalam bentuk ternormal)
 const PO_TO_NEGERI: Record<string, string> = {
   BESUT: 'Terengganu',
   DUNGUN: 'Terengganu',
@@ -34,11 +45,13 @@ const PO_TO_NEGERI: Record<string, string> = {
   'KUALA KANGSAR': 'Perak',
   MANJUNG: 'Perak',
   SELAMA: 'Perak',
+  TAPAH: 'Perak',
   KUANTAN: 'Pahang',
   LIPIS: 'Pahang',
   PEKAN: 'Pahang',
   RAUB: 'Pahang',
   ROMPIN: 'Pahang',
+  TEMERLOH: 'Pahang',
   MACHANG: 'Kelantan',
   KEDAH: 'Kedah',
   JOHOR: 'Johor',
@@ -85,7 +98,7 @@ type HasilRow = {
 }
 
 function negeriOf(r: HasilRow): string {
-  return r.negeri || PO_TO_NEGERI[(r.pol_pn || '').toUpperCase()] || 'Lain-lain'
+  return r.negeri || PO_TO_NEGERI[normPO(r.pol_pn)] || 'Lain-lain'
 }
 
 function wilayahOf(r: HasilRow): string {
