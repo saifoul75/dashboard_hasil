@@ -250,7 +250,7 @@ export default function DashboardPage() {
             <select
               value={po}
               onChange={(e) => setPo(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
             >
               <option value={ALL}>Semua Pusat Operasi</option>
               {senaraiPO.map((kod) => (
@@ -267,7 +267,7 @@ export default function DashboardPage() {
             <select
               value={bulan}
               onChange={(e) => setBulan(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
             >
               <option value={ALL}>Setakat (semua bulan)</option>
               {senaraiBulan.map((b) => (
