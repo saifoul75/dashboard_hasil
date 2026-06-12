@@ -97,6 +97,9 @@ type HasilRow = {
   wilayah?: string | null
 }
 
+// Baris dengan hasil increment bulanan (inc) yang dikira dari nilai kumulatif
+type AugRow = HasilRow & { inc: number }
+
 function negeriOf(r: HasilRow): string {
   return r.negeri || PO_TO_NEGERI[normPO(r.pol_pn)] || 'Lain-lain'
 }
@@ -109,8 +112,25 @@ function nf(n: number, d = 1) {
   return (n || 0).toLocaleString('ms-MY', { maximumFractionDigits: d })
 }
 
-function sum(arr: HasilRow[], key: keyof HasilRow): number {
-  return arr.reduce((s, r) => s + (Number(r[key]) || 0), 0)
+// Jumlah hasil = campur increment bulanan
+function hasilInc(arr: AugRow[]): number {
+  return arr.reduce((s, r) => s + (Number(r.inc) || 0), 0)
+}
+
+// Luas = kawasan operasi (stok, bukan aliran). Ambil bulan TERKINI bagi setiap
+// projek, kemudian campur antara projek. Jangan campur antara bulan.
+function luasLatest(arr: AugRow[]): number {
+  const byProj = new Map<string, AugRow>()
+  arr.forEach((r) => {
+    const k = r.pol_pn + '|' + r.nama
+    const cur = byProj.get(k)
+    if (!cur || r.kod_bulan > cur.kod_bulan) byProj.set(k, r)
+  })
+  let s = 0
+  byProj.forEach((r) => {
+    s += Number(r.luas_operasi) || 0
+  })
+  return s
 }
 
 export default function DashboardPage() {
@@ -161,6 +181,29 @@ export default function DashboardPage() {
       document.removeEventListener('keydown', blockKeys)
     }
   }, [])
+
+  // Tukar hasil kumulatif -> increment bulanan bagi setiap projek
+  // (kunci projek: pol_pn + nama + jenis). Bulan pertama = nilai kumulatifnya.
+  const augmented = useMemo<AugRow[]>(() => {
+    const groups = new Map<string, HasilRow[]>()
+    rows.forEach((r) => {
+      const k = r.pol_pn + '|' + r.nama + '|' + r.jenis
+      if (!groups.has(k)) groups.set(k, [])
+      groups.get(k)!.push(r)
+    })
+    const out: AugRow[] = []
+    groups.forEach((list) => {
+      list.sort((a, b) => a.kod_bulan.localeCompare(b.kod_bulan))
+      let prev = 0
+      list.forEach((r, i) => {
+        const cum = Number(r.hasil) || 0
+        const inc = i === 0 ? cum : cum - prev
+        prev = cum
+        out.push({ ...r, inc })
+      })
+    })
+    return out
+  }, [rows])
 
   // Senarai Wilayah (susunan tetap, hanya yang ada data)
   const senaraiWilayah = useMemo(() => {
@@ -222,13 +265,13 @@ export default function DashboardPage() {
   // Tapisan geografi (Wilayah -> Negeri -> PO), abaikan bulan
   const geoFiltered = useMemo(
     () =>
-      rows.filter(
+      augmented.filter(
         (r) =>
           (wilayah === ALL || wilayahOf(r) === wilayah) &&
           (negeri === ALL || negeriOf(r) === negeri) &&
           (po === ALL || r.pol_pn === po)
       ),
-    [rows, wilayah, negeri, po]
+    [augmented, wilayah, negeri, po]
   )
 
   // Baris ditapis penuh (termasuk bulan)
@@ -237,14 +280,14 @@ export default function DashboardPage() {
     [geoFiltered, bulan]
   )
 
-  // Agregat hasil + hasil/hek
+  // Agregat hasil (increment) + hasil/hek (luas bulan terkini)
   const agg = useMemo(() => {
     const sawit = filtered.filter((r) => r.jenis === 'sawit')
     const getah = filtered.filter((r) => r.jenis === 'getah')
-    const sawitHasil = sum(sawit, 'hasil')
-    const getahHasil = sum(getah, 'hasil')
-    const sawitLuas = sum(sawit, 'luas_operasi')
-    const getahLuas = sum(getah, 'luas_operasi')
+    const sawitHasil = hasilInc(sawit)
+    const getahHasil = hasilInc(getah)
+    const sawitLuas = luasLatest(sawit)
+    const getahLuas = luasLatest(getah)
     return {
       sawitHasil,
       getahHasil,
@@ -253,7 +296,7 @@ export default function DashboardPage() {
     }
   }, [filtered])
 
-  // Trend bulanan (ikut tapisan geografi, abaikan tapisan bulan)
+  // Trend bulanan (increment, ikut tapisan geografi, abaikan tapisan bulan)
   const trend = useMemo(() => {
     const map = new Map<
       string,
@@ -269,11 +312,11 @@ export default function DashboardPage() {
         })
       }
       const m = map.get(r.kod_bulan)!
-      if (r.jenis === 'sawit') m.Sawit += Number(r.hasil) || 0
-      else m.Getah += Number(r.hasil) || 0
+      if (r.jenis === 'sawit') m.Sawit += Number(r.inc) || 0
+      else m.Getah += Number(r.inc) || 0
     })
     return Array.from(map.values())
-      .filter((m) => m.Sawit > 0 || m.Getah > 0)
+      .filter((m) => m.Sawit !== 0 || m.Getah !== 0)
       .sort((a, b) => a.kod.localeCompare(b.kod))
   }, [geoFiltered])
 
@@ -290,7 +333,7 @@ export default function DashboardPage() {
 
   // Jadual pecahan adaptif
   const jadual = useMemo(() => {
-    const info = (r: HasilRow): { key: string; label: string } => {
+    const info = (r: AugRow): { key: string; label: string } => {
       if (po !== ALL) return { key: r.kod_bulan, label: r.nama_bulan || r.kod_bulan }
       if (negeri !== ALL) return { key: r.pol_pn || 'Lain-lain', label: r.pol_pn || 'Lain-lain' }
       if (wilayah !== ALL) {
@@ -303,14 +346,7 @@ export default function DashboardPage() {
 
     const map = new Map<
       string,
-      {
-        key: string
-        label: string
-        sawitHasil: number
-        sawitLuas: number
-        getahHasil: number
-        getahLuas: number
-      }
+      { key: string; label: string; sawitRows: AugRow[]; getahRows: AugRow[] }
     >()
     filtered.forEach((r) => {
       const item = info(r)
@@ -318,22 +354,22 @@ export default function DashboardPage() {
         map.set(item.key, {
           key: item.key,
           label: item.label,
-          sawitHasil: 0,
-          sawitLuas: 0,
-          getahHasil: 0,
-          getahLuas: 0,
+          sawitRows: [],
+          getahRows: [],
         })
       }
-      const m = map.get(item.key)!
-      if (r.jenis === 'sawit') {
-        m.sawitHasil += Number(r.hasil) || 0
-        m.sawitLuas += Number(r.luas_operasi) || 0
-      } else {
-        m.getahHasil += Number(r.hasil) || 0
-        m.getahLuas += Number(r.luas_operasi) || 0
-      }
+      const g = map.get(item.key)!
+      if (r.jenis === 'sawit') g.sawitRows.push(r)
+      else g.getahRows.push(r)
     })
-    const list = Array.from(map.values())
+    const list = Array.from(map.values()).map((g) => ({
+      key: g.key,
+      label: g.label,
+      sawitHasil: hasilInc(g.sawitRows),
+      sawitLuas: luasLatest(g.sawitRows),
+      getahHasil: hasilInc(g.getahRows),
+      getahLuas: luasLatest(g.getahRows),
+    }))
     if (groupLabel === 'Wilayah') {
       return list.sort((a, b) => {
         const ia = WILAYAH_ORDER.indexOf(a.key)
