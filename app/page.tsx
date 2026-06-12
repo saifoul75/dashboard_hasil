@@ -265,9 +265,10 @@ export default function DashboardPage() {
   }, [geoFiltered])
 
   // Aras pecahan adaptif ikut tahap tapisan
+  // Tiada tapisan -> Wilayah; Wilayah -> Negeri; Negeri -> PO; PO -> Bulan
   const groupLabel =
     po !== ALL
-      ? 'Projek'
+      ? 'Bulan'
       : negeri !== ALL
       ? 'Pusat Operasi'
       : wilayah !== ALL
@@ -276,18 +277,21 @@ export default function DashboardPage() {
 
   // Jadual pecahan adaptif
   const jadual = useMemo(() => {
-    const keyOf = (r: HasilRow) =>
-      po !== ALL
-        ? r.nama || 'Lain-lain'
-        : negeri !== ALL
-        ? r.pol_pn || 'Lain-lain'
-        : wilayah !== ALL
-        ? negeriOf(r)
-        : wilayahOf(r)
+    const info = (r: HasilRow): { key: string; label: string } => {
+      if (po !== ALL) return { key: r.kod_bulan, label: r.nama_bulan || r.kod_bulan }
+      if (negeri !== ALL) return { key: r.pol_pn || 'Lain-lain', label: r.pol_pn || 'Lain-lain' }
+      if (wilayah !== ALL) {
+        const n = negeriOf(r)
+        return { key: n, label: n }
+      }
+      const w = wilayahOf(r)
+      return { key: w, label: w }
+    }
 
     const map = new Map<
       string,
       {
+        key: string
         label: string
         sawitHasil: number
         sawitLuas: number
@@ -296,17 +300,18 @@ export default function DashboardPage() {
       }
     >()
     filtered.forEach((r) => {
-      const key = keyOf(r)
-      if (!map.has(key)) {
-        map.set(key, {
-          label: key,
+      const item = info(r)
+      if (!map.has(item.key)) {
+        map.set(item.key, {
+          key: item.key,
+          label: item.label,
           sawitHasil: 0,
           sawitLuas: 0,
           getahHasil: 0,
           getahLuas: 0,
         })
       }
-      const m = map.get(key)!
+      const m = map.get(item.key)!
       if (r.jenis === 'sawit') {
         m.sawitHasil += Number(r.hasil) || 0
         m.sawitLuas += Number(r.luas_operasi) || 0
@@ -318,11 +323,14 @@ export default function DashboardPage() {
     const list = Array.from(map.values())
     if (groupLabel === 'Wilayah') {
       return list.sort((a, b) => {
-        const ia = WILAYAH_ORDER.indexOf(a.label)
-        const ib = WILAYAH_ORDER.indexOf(b.label)
+        const ia = WILAYAH_ORDER.indexOf(a.key)
+        const ib = WILAYAH_ORDER.indexOf(b.key)
         if (ia !== -1 && ib !== -1) return ia - ib
         return a.label.localeCompare(b.label)
       })
+    }
+    if (groupLabel === 'Bulan') {
+      return list.sort((a, b) => a.key.localeCompare(b.key))
     }
     return list.sort((a, b) => a.label.localeCompare(b.label))
   }, [filtered, wilayah, negeri, po, groupLabel])
@@ -525,7 +533,7 @@ export default function DashboardPage() {
               <tbody>
                 {jadual.map((r) => (
                   <tr
-                    key={r.label}
+                    key={r.key}
                     className="border-b border-gray-200 hover:bg-gray-50"
                   >
                     <td className="px-4 py-3 font-medium text-gray-900">
