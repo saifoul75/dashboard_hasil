@@ -184,6 +184,7 @@ export default function DashboardPage() {
 
   // Tukar hasil kumulatif -> increment bulanan bagi setiap projek
   // (kunci projek: pol_pn + nama + jenis). Bulan pertama = nilai kumulatifnya.
+  // Langkau bulan kumulatif 0 atau jatuh (tanda data belum dimasukkan).
   const augmented = useMemo<AugRow[]>(() => {
     const groups = new Map<string, HasilRow[]>()
     rows.forEach((r) => {
@@ -195,10 +196,14 @@ export default function DashboardPage() {
     groups.forEach((list) => {
       list.sort((a, b) => a.kod_bulan.localeCompare(b.kod_bulan))
       let prev = 0
-      list.forEach((r, i) => {
+      let started = false
+      list.forEach((r) => {
         const cum = Number(r.hasil) || 0
-        const inc = i === 0 ? cum : cum - prev
+        if (cum <= 0) return
+        if (started && cum < prev) return
+        const inc = !started ? cum : cum - prev
         prev = cum
+        started = true
         out.push({ ...r, inc })
       })
     })
