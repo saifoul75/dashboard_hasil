@@ -55,6 +55,14 @@ function nf(n: number, d = 1) {
   return (n || 0).toLocaleString('ms-MY', { maximumFractionDigits: d })
 }
 
+// Pendekkan label bulan untuk paksi-X (cth "Januari 2026" -> "Jan '26")
+// supaya tidak bertindih pada skrin telefon.
+function bulanRingkas(s: string) {
+  const [bulan, tahun] = String(s).split(' ')
+  const b = bulan ? bulan.slice(0, 3) : String(s)
+  return tahun ? `${b} '${tahun.slice(2)}` : b
+}
+
 // Jumlah hasil = campur increment bulanan
 function hasilInc(arr: AugRow[]): number {
   return arr.reduce((s, r) => s + (Number(r.inc) || 0), 0)
@@ -276,7 +284,7 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6 select-none"
+      className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 sm:p-6 select-none"
       style={NO_SELECT_STYLE}
     >
       <div className="max-w-6xl mx-auto">
@@ -368,7 +376,7 @@ export default function DashboardPage() {
               </h2>
               <ResponsiveContainer width="100%" height={140}>
                 <BarChart data={trend} margin={CHART_MARGIN}>
-                  <XAxis dataKey="nama" tick={AXIS_TICK} />
+                  <XAxis dataKey="nama" tick={AXIS_TICK} tickFormatter={bulanRingkas} />
                   <YAxis tick={AXIS_TICK} width={40} />
                   <Tooltip
                     formatter={(v) =>
@@ -389,7 +397,7 @@ export default function DashboardPage() {
               </h2>
               <ResponsiveContainer width="100%" height={140}>
                 <BarChart data={trend} margin={CHART_MARGIN}>
-                  <XAxis dataKey="nama" tick={AXIS_TICK} />
+                  <XAxis dataKey="nama" tick={AXIS_TICK} tickFormatter={bulanRingkas} />
                   <YAxis tick={AXIS_TICK} width={40} />
                   <Tooltip
                     formatter={(v) =>
@@ -412,6 +420,9 @@ export default function DashboardPage() {
             </h2>
             <p className="text-xs text-gray-500">{namaPO}</p>
           </div>
+          <p className="px-6 pt-2 text-xs text-gray-400 sm:hidden">
+            ← Skrol mendatar untuk lihat semua lajur →
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
