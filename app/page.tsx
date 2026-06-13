@@ -323,33 +323,33 @@ export default function DashboardPage() {
           <div
             className={
               bilanganTanaman === 2
-                ? 'grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8'
-                : 'grid grid-cols-1 gap-6 mb-8'
+                ? 'grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6'
+                : 'grid grid-cols-1 gap-6 mb-6'
             }
           >
             {hasSawit && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   Hasil Sawit
                 </div>
                 <div className="text-2xl font-bold text-orange-600">
                   {nf(agg.sawitHasil)} MT
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-gray-500 mt-1">
                   {nf(agg.sawitPerHek, 2)} MT/hek
                 </p>
               </div>
             )}
 
             {hasGetah && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   Hasil Getah
                 </div>
                 <div className="text-2xl font-bold text-amber-600">
                   {nf(agg.getahHasil, 0)} kg
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-gray-500 mt-1">
                   {nf(agg.getahPerHek, 2)} kg/hek
                 </p>
               </div>
@@ -358,20 +358,20 @@ export default function DashboardPage() {
         )}
 
         {/* Chart */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-8">
+          <h2 className="text-base font-semibold text-gray-900 mb-2">
             Trend Hasil Mengikut Bulan {skop ? `— ${skop}` : ''}
           </h2>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={trend}>
+          <ResponsiveContainer width="100%" height={120}>
+            <BarChart data={trend} margin= top: 4, right: 8, left: 0, bottom: 0 >
               <XAxis dataKey="nama" tick={AXIS_TICK} />
-              <YAxis tick={AXIS_TICK} />
+              <YAxis tick={AXIS_TICK} width={40} />
               <Tooltip
                 formatter={(v) =>
                   typeof v === 'number' ? v.toLocaleString('ms-MY') : v
                 }
               />
-              <Legend />
+              <Legend wrapperStyle= fontSize: 12  />
               {hasSawit && (
                 <Bar dataKey="Sawit" fill="#ea580c" name="Sawit (MT)" />
               )}
