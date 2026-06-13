@@ -328,11 +328,11 @@ export default function DashboardPage() {
             }
           >
             {hasSawit && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
                   Hasil Sawit
                 </div>
-                <div className="text-3xl font-bold text-orange-600">
+                <div className="text-2xl font-bold text-orange-600">
                   {nf(agg.sawitHasil)} MT
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
@@ -342,11 +342,11 @@ export default function DashboardPage() {
             )}
 
             {hasGetah && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
                   Hasil Getah
                 </div>
-                <div className="text-3xl font-bold text-amber-600">
+                <div className="text-2xl font-bold text-amber-600">
                   {nf(agg.getahHasil, 0)} kg
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
@@ -362,7 +362,7 @@ export default function DashboardPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Trend Hasil Mengikut Bulan {skop ? `— ${skop}` : ''}
           </h2>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={180}>
             <BarChart data={trend}>
               <XAxis dataKey="nama" tick={AXIS_TICK} />
               <YAxis tick={AXIS_TICK} />
@@ -394,26 +394,26 @@ export default function DashboardPage() {
             <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-900">
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900">
                     {groupLabel}
                   </th>
                   {hasSawit && (
-                    <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-900">
                       Sawit (MT)
                     </th>
                   )}
                   {hasSawit && (
-                    <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-900">
                       MT/hek
                     </th>
                   )}
                   {hasGetah && (
-                    <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-900">
                       Getah (kg)
                     </th>
                   )}
                   {hasGetah && (
-                    <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-900">
                       kg/hek
                     </th>
                   )}
@@ -425,26 +425,26 @@ export default function DashboardPage() {
                     key={r.key}
                     className="border-b border-gray-200 hover:bg-gray-50"
                   >
-                    <td className="px-4 py-3 font-medium text-gray-900">
+                    <td className="px-4 py-2 text-xs font-medium text-gray-900">
                       {r.label}
                     </td>
                     {hasSawit && (
-                      <td className="px-4 py-3 text-right text-orange-600 font-semibold">
+                      <td className="px-4 py-2 text-right text-xs text-orange-600 font-semibold">
                         {nf(r.sawitHasil)}
                       </td>
                     )}
                     {hasSawit && (
-                      <td className="px-4 py-3 text-right text-gray-700">
+                      <td className="px-4 py-2 text-right text-xs text-gray-700">
                         {nf(r.sawitLuas > 0 ? r.sawitHasil / r.sawitLuas : 0, 2)}
                       </td>
                     )}
                     {hasGetah && (
-                      <td className="px-4 py-3 text-right text-amber-600 font-semibold">
+                      <td className="px-4 py-2 text-right text-xs text-amber-600 font-semibold">
                         {nf(r.getahHasil, 0)}
                       </td>
                     )}
                     {hasGetah && (
-                      <td className="px-4 py-3 text-right text-gray-700">
+                      <td className="px-4 py-2 text-right text-xs text-gray-700">
                         {nf(r.getahLuas > 0 ? r.getahHasil / r.getahLuas : 0, 2)}
                       </td>
                     )}
@@ -464,24 +464,24 @@ export default function DashboardPage() {
               {jadual.length > 0 && (
                 <tfoot>
                   <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
-                    <td className="px-4 py-3 text-gray-900">JUMLAH</td>
+                    <td className="px-4 py-2 text-xs text-gray-900">JUMLAH</td>
                     {hasSawit && (
-                      <td className="px-4 py-3 text-right text-orange-600">
+                      <td className="px-4 py-2 text-right text-xs text-orange-600">
                         {nf(agg.sawitHasil)}
                       </td>
                     )}
                     {hasSawit && (
-                      <td className="px-4 py-3 text-right text-gray-700">
+                      <td className="px-4 py-2 text-right text-xs text-gray-700">
                         {nf(agg.sawitPerHek, 2)}
                       </td>
                     )}
                     {hasGetah && (
-                      <td className="px-4 py-3 text-right text-amber-600">
+                      <td className="px-4 py-2 text-right text-xs text-amber-600">
                         {nf(agg.getahHasil, 0)}
                       </td>
                     )}
                     {hasGetah && (
-                      <td className="px-4 py-3 text-right text-gray-700">
+                      <td className="px-4 py-2 text-right text-xs text-gray-700">
                         {nf(agg.getahPerHek, 2)}
                       </td>
                     )}
