@@ -22,6 +22,8 @@ const NO_SELECT_STYLE = {
   WebkitUserSelect: 'none' as const,
 }
 const AXIS_TICK = { fontSize: 12 }
+const LEGEND_STYLE = { fontSize: 12 }
+const CHART_MARGIN = { top: 4, right: 8, left: 0, bottom: 0 }
 const ALL = 'ALL'
 
 type HasilRow = {
@@ -363,7 +365,7 @@ export default function DashboardPage() {
             Trend Hasil Mengikut Bulan {skop ? `— ${skop}` : ''}
           </h2>
           <ResponsiveContainer width="100%" height={120}>
-            <BarChart data={trend} margin= top: 4, right: 8, left: 0, bottom: 0 >
+            <BarChart data={trend} margin={CHART_MARGIN}>
               <XAxis dataKey="nama" tick={AXIS_TICK} />
               <YAxis tick={AXIS_TICK} width={40} />
               <Tooltip
@@ -371,7 +373,7 @@ export default function DashboardPage() {
                   typeof v === 'number' ? v.toLocaleString('ms-MY') : v
                 }
               />
-              <Legend wrapperStyle= fontSize: 12  />
+              <Legend wrapperStyle={LEGEND_STYLE} />
               {hasSawit && (
                 <Bar dataKey="Sawit" fill="#ea580c" name="Sawit (MT)" />
               )}
