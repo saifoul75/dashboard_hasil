@@ -324,7 +324,7 @@ export default function DashboardPage() {
         ) : (
           <div className="flex flex-wrap gap-4 mb-6">
             {hasSawit && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 w-full sm:w-36">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 w-full sm:w-28">
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   Hasil Sawit
                 </div>
@@ -338,7 +338,7 @@ export default function DashboardPage() {
             )}
 
             {hasGetah && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 w-full sm:w-36">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 w-full sm:w-28">
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   Hasil Getah
                 </div>
