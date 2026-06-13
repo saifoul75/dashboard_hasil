@@ -324,11 +324,11 @@ export default function DashboardPage() {
         ) : (
           <div className="flex flex-wrap gap-4 mb-6">
             {hasSawit && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 w-full sm:w-60">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 w-full sm:w-48">
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   Hasil Sawit
                 </div>
-                <div className="text-lg font-bold text-orange-600">
+                <div className="text-base font-bold text-orange-600">
                   {nf(agg.sawitHasil)} MT
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
@@ -338,11 +338,11 @@ export default function DashboardPage() {
             )}
 
             {hasGetah && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 w-full sm:w-60">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 w-full sm:w-48">
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   Hasil Getah
                 </div>
-                <div className="text-lg font-bold text-amber-600">
+                <div className="text-base font-bold text-amber-600">
                   {nf(agg.getahHasil, 0)} kg
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
@@ -353,29 +353,55 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Chart */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-8">
-          <h2 className="text-base font-semibold text-gray-900 mb-2">
-            Trend Hasil Mengikut Bulan {skop ? `— ${skop}` : ''}
-          </h2>
-          <ResponsiveContainer width="100%" height={120}>
-            <BarChart data={trend} margin={CHART_MARGIN}>
-              <XAxis dataKey="nama" tick={AXIS_TICK} />
-              <YAxis tick={AXIS_TICK} width={40} />
-              <Tooltip
-                formatter={(v) =>
-                  typeof v === 'number' ? v.toLocaleString('ms-MY') : v
-                }
-              />
-              <Legend wrapperStyle={LEGEND_STYLE} />
-              {hasSawit && (
-                <Bar dataKey="Sawit" fill="#ea580c" name="Sawit (MT)" />
-              )}
-              {hasGetah && (
-                <Bar dataKey="Getah" fill="#b45309" name="Getah (kg)" />
-              )}
-            </BarChart>
-          </ResponsiveContainer>
+        {/* Charts: Sawit & Getah berasingan (paksi berbeza) */}
+        <div
+          className={
+            hasSawit && hasGetah
+              ? 'grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8'
+              : 'grid grid-cols-1 gap-4 mb-8'
+          }
+        >
+          {hasSawit && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <h2 className="text-base font-semibold text-gray-900 mb-2">
+                Trend Hasil Sawit (MT) {skop ? `— ${skop}` : ''}
+              </h2>
+              <ResponsiveContainer width="100%" height={140}>
+                <BarChart data={trend} margin={CHART_MARGIN}>
+                  <XAxis dataKey="nama" tick={AXIS_TICK} />
+                  <YAxis tick={AXIS_TICK} width={40} />
+                  <Tooltip
+                    formatter={(v) =>
+                      typeof v === 'number' ? v.toLocaleString('ms-MY') : v
+                    }
+                  />
+                  <Legend wrapperStyle={LEGEND_STYLE} />
+                  <Bar dataKey="Sawit" fill="#ea580c" name="Sawit (MT)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {hasGetah && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <h2 className="text-base font-semibold text-gray-900 mb-2">
+                Trend Hasil Getah (kg) {skop ? `— ${skop}` : ''}
+              </h2>
+              <ResponsiveContainer width="100%" height={140}>
+                <BarChart data={trend} margin={CHART_MARGIN}>
+                  <XAxis dataKey="nama" tick={AXIS_TICK} />
+                  <YAxis tick={AXIS_TICK} width={40} />
+                  <Tooltip
+                    formatter={(v) =>
+                      typeof v === 'number' ? v.toLocaleString('ms-MY') : v
+                    }
+                  />
+                  <Legend wrapperStyle={LEGEND_STYLE} />
+                  <Bar dataKey="Getah" fill="#b45309" name="Getah (kg)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         {/* Jadual pecahan */}
