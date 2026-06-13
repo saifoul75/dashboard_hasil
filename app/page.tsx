@@ -324,11 +324,11 @@ export default function DashboardPage() {
         ) : (
           <div className="flex flex-wrap gap-4 mb-6">
             {hasSawit && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 w-full sm:w-28">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 w-full sm:w-44">
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   Hasil Sawit
                 </div>
-                <div className="text-base font-bold text-orange-600">
+                <div className="text-xl font-bold text-orange-600">
                   {nf(agg.sawitHasil)} MT
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
@@ -338,11 +338,11 @@ export default function DashboardPage() {
             )}
 
             {hasGetah && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 w-full sm:w-28">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 w-full sm:w-44">
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   Hasil Getah
                 </div>
-                <div className="text-base font-bold text-amber-600">
+                <div className="text-xl font-bold text-amber-600">
                   {nf(agg.getahHasil, 0)} kg
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
@@ -376,7 +376,7 @@ export default function DashboardPage() {
                     }
                   />
                   <Legend wrapperStyle={LEGEND_STYLE} />
-                  <Bar dataKey="Sawit" fill="#ea580c" name="Sawit (MT)" />
+                  <Bar dataKey="Sawit" fill="#ea580c" name="Sawit (MT)" barSize={28} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -397,7 +397,7 @@ export default function DashboardPage() {
                     }
                   />
                   <Legend wrapperStyle={LEGEND_STYLE} />
-                  <Bar dataKey="Getah" fill="#b45309" name="Getah (kg)" />
+                  <Bar dataKey="Getah" fill="#b45309" name="Getah (kg)" barSize={28} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
