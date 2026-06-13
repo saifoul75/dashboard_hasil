@@ -269,7 +269,7 @@ export default function DashboardPage() {
     )
   }
 
-  const namaPO = po === ALL ? 'Semua Pusat Operasi' : po
+  const namaPO = po === ALL ? 'Semua Pusat Operasi' : 'Pusat Operasi ' + po
   const skop = po !== ALL ? po : ''
   const bilanganTanaman = (hasSawit ? 1 : 0) + (hasGetah ? 1 : 0)
   const colSpanKosong = 1 + (hasSawit ? 2 : 0) + (hasGetah ? 2 : 0)
@@ -325,16 +325,16 @@ export default function DashboardPage() {
           <div
             className={
               bilanganTanaman === 2
-                ? 'grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6'
-                : 'grid grid-cols-1 gap-6 mb-6'
+                ? 'grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6'
+                : 'grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6'
             }
           >
             {hasSawit && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3">
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   Hasil Sawit
                 </div>
-                <div className="text-2xl font-bold text-orange-600">
+                <div className="text-xl font-bold text-orange-600">
                   {nf(agg.sawitHasil)} MT
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
@@ -344,11 +344,11 @@ export default function DashboardPage() {
             )}
 
             {hasGetah && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3">
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   Hasil Getah
                 </div>
-                <div className="text-2xl font-bold text-amber-600">
+                <div className="text-xl font-bold text-amber-600">
                   {nf(agg.getahHasil, 0)} kg
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
