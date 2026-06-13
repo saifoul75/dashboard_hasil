@@ -312,8 +312,8 @@ export default function DashboardPage() {
         </div>
 
         {/* Konteks */}
-        <div className="mb-4 text-sm text-gray-700">
-          Menunjukkan: <span className="font-semibold">{namaPO}</span>
+        <div className="mb-4 text-sm font-semibold text-gray-700">
+          {namaPO}
         </div>
 
         {/* Stats Cards */}
@@ -322,19 +322,13 @@ export default function DashboardPage() {
             Tiada data hasil untuk pilihan ini.
           </div>
         ) : (
-          <div
-            className={
-              bilanganTanaman === 2
-                ? 'grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6'
-                : 'grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6'
-            }
-          >
+          <div className="flex flex-wrap gap-4 mb-6">
             {hasSawit && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 w-full sm:w-60">
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   Hasil Sawit
                 </div>
-                <div className="text-xl font-bold text-orange-600">
+                <div className="text-lg font-bold text-orange-600">
                   {nf(agg.sawitHasil)} MT
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
@@ -344,11 +338,11 @@ export default function DashboardPage() {
             )}
 
             {hasGetah && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 w-full sm:w-60">
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   Hasil Getah
                 </div>
-                <div className="text-xl font-bold text-amber-600">
+                <div className="text-lg font-bold text-amber-600">
                   {nf(agg.getahHasil, 0)} kg
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
