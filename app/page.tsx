@@ -362,7 +362,7 @@ export default function DashboardPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Trend Hasil Mengikut Bulan {skop ? `— ${skop}` : ''}
           </h2>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={trend}>
               <XAxis dataKey="nama" tick={AXIS_TICK} />
               <YAxis tick={AXIS_TICK} />
